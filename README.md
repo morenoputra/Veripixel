@@ -83,3 +83,5 @@ Untuk dokumen pengujian black box aplikasi, lihat [black-box-testing.md](black-b
 - **Threshold klasifikasi**: default 0.5 pada `inference.py` (`prob_real >= 0.5`).
 - **Ukuran maksimal upload**: `MAX_CONTENT_LENGTH` di `app.py`.
 - **Lokasi database**: `DB_PATH` di `db.py` (default: `veripixel.db` di root proyek).
+
+# Veripixel
