@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeriPixel — Deteksi Gambar Real atau AI</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo-icon.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% set confidence_value = confidence|default(0)|float %}
+    {% set ai_score = confidence_value if label == 'AI-Generated' else 100 - confidence_value %}
+    {% set real_score = confidence_value if label == 'Real Image' else 100 - confidence_value %}
+
+    <!-- ============ NAVBAR ============ -->
+    <nav class="navbar navbar-expand-lg fixed-top vp-nav">
+        <div class="container">
+            <a class="navbar-brand vp-brand" href="#home">
+                <img class="vp-logo" src="{{ url_for('static', filename='images/logo-icon.png') }}" alt="Logo VeriPixel">
+                <span class="vp-brand-text">Veri<span>Pixel</span></span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#vpNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="vpNavbar">
+                <ul class="navbar-nav align-items-lg-center gap-lg-1">
+                    <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#deteksi">Deteksi</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#hasil">Hasil</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#history">History</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#tentang">Tentang</a></li>
+                    <li class="nav-item ms-lg-2">
+                        <a class="btn vp-btn vp-btn-primary" href="#deteksi">Cek Gambar</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- ============ HERO ============ -->
+        <section class="vp-hero" id="home">
+            <div class="vp-hero-glow" aria-hidden="true"></div>
+            <div class="container position-relative">
+                <div class="row align-items-center gy-5">
+                    <div class="col-lg-6">
+                        <p class="vp-eyebrow"><span class="vp-pulse"></span>Forensik citra berbasis deep learning</p>
+                        <h1 class="vp-h1">Verify every <span>pixel.</span></h1>
+                        <p class="vp-lead">
+                            Unggah gambar, dan biarkan EfficientNet-B0 menilai apakah citra tersebut asli atau
+                            hasil generatif AI — lengkap dengan tingkat keyakinan dan peta perhatian Grad-CAM
+                            yang menunjukkan area yang paling memengaruhi keputusan model.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="#deteksi" class="btn vp-btn vp-btn-primary btn-lg">Mulai Analisis</a>
+                            <a href="#hasil" class="btn vp-btn vp-btn-ghost btn-lg">Lihat Contoh Hasil</a>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="vp-panel vp-scan-card">
+                            <div class="vp-scan-stage">
+                                <img class="vp-logo vp-logo-scan" src="{{ url_for('static', filename='images/logo-icon.png') }}" alt="Logo VeriPixel">
+                                <div class="vp-scanline" aria-hidden="true"></div>
+                            </div>
+                            <div class="row g-2 mt-3">
+                                <div class="col-4">
+                                    <div class="vp-metric">
+                                        <strong>01</strong>
+                                        <span>Upload gambar</span>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="vp-metric">
+                                        <strong>02</strong>
+                                        <span>Klasifikasi AI</span>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="vp-metric">
+                                        <strong>03</strong>
+                                        <span>Grad-CAM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ DETEKSI ============ -->
+        <section class="vp-section vp-section-alt" id="deteksi">
+            <div class="container">
+                <div class="vp-section-head mx-auto text-center">
+                    <p class="vp-kicker">Langkah 1</p>
+                    <h2 class="vp-h2">Deteksi <span>real atau AI</span></h2>
+                    <p class="vp-section-copy">
+                        Pilih file JPG, JPEG, atau PNG untuk diproses. Setelah analisis selesai, halaman ini akan
+                        menampilkan label, persentase keyakinan, gambar asli, dan heatmap Grad-CAM.
+                    </p>
+                </div>
+
+                <div class="row g-3 align-items-stretch">
+                    <div class="col-lg-5">
+                        <div class="vp-panel h-100 p-4">
+                            <form action="{{ url_for('index') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                                <label class="vp-dropzone" for="file" id="dropzone">
+                                    <span class="vp-upload-icon">+</span>
+                                    <h3 class="vp-h3">Upload gambar untuk diverifikasi</h3>
+                                    <p class="vp-muted mb-3">
+                                        Model membaca pola piksel &amp; menandai area penting pada hasil Grad-CAM.
+                                        Maksimal ukuran file 20MB.
+                                    </p>
+                                    <input type="file" id="file" name="file" accept=".jpg,.jpeg,.png" required>
+                                    <span class="vp-file-name" id="fileName">Belum ada file dipilih</span>
+                                </label>
+                                <button type="submit" class="btn vp-btn vp-btn-primary w-100 mt-3" id="submitBtn">
+                                    Analisis Gambar
+                                </button>
+                            </form>
+
+                            {% if error %}
+                            <div class="vp-alert" role="alert">{{ error }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="vp-panel h-100 p-4 d-flex flex-column gap-3">
+                            <div class="vp-step">
+                                <div class="vp-step-num">01</div>
+                                <div>
+                                    <h3 class="vp-h4">Input citra</h3>
+                                    <p class="vp-muted mb-0">Gambar yang diunggah disiapkan dan disesuaikan ke ukuran input model (224×224px).</p>
+                                </div>
+                            </div>
+                            <div class="vp-step">
+                                <div class="vp-step-num">02</div>
+                                <div>
+                                    <h3 class="vp-h4">Prediksi model</h3>
+                                    <p class="vp-muted mb-0">EfficientNet-B0 memberikan keputusan real / AI-generated beserta tingkat keyakinan.</p>
+                                </div>
+                            </div>
+                            <div class="vp-step">
+                                <div class="vp-step-num">03</div>
+                                <div>
+                                    <h3 class="vp-h4">Visualisasi Grad-CAM</h3>
+                                    <p class="vp-muted mb-0">Heatmap menunjukkan bagian gambar yang paling kuat memengaruhi keputusan model.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ HASIL ============ -->
+        <section class="vp-section" id="hasil">
+            <div class="container">
+                <div class="vp-section-head mx-auto text-center">
+                    <p class="vp-kicker">Langkah 2</p>
+                    <h2 class="vp-h2">Hasil <span>analisis</span></h2>
+                    <p class="vp-section-copy">
+                        Persentase menampilkan keyakinan untuk kelas real dan AI-generated, sementara Grad-CAM
+                        memberi konteks visual pada keputusan model.
+                    </p>
+                </div>
+
+                {% if label %}
+                <div class="row g-3 align-items-stretch">
+                    <div class="col-lg-5">
+                        <div class="vp-panel vp-result-summary h-100 p-4">
+                            <span class="vp-pill {% if label == 'AI-Generated' %}vp-pill-danger{% endif %}">
+                                {% if label == 'Real Image' %}Terdeteksi Real Image{% else %}Terdeteksi AI-Generated{% endif %}
+                            </span>
+                            <h3 class="vp-result-score">{{ "%.2f"|format(confidence_value) }}%</h3>
+                            <p class="vp-muted">
+                                Tingkat keyakinan model terhadap hasil deteksi. Padukan skor ini dengan visualisasi
+                                heatmap untuk analisis forensik yang lebih komprehensif.
+                            </p>
+                            <div class="vp-score-list">
+                                <div>
+                                    <div class="vp-score-top">
+                                        <span>Real Image</span>
+                                        <span class="vp-mono">{{ "%.2f"|format(real_score) }}%</span>
+                                    </div>
+                                    <div class="vp-bar"><span style="width: {{ real_score }}%;"></span></div>
+                                </div>
+                                <div>
+                                    <div class="vp-score-top">
+                                        <span>AI-Generated</span>
+                                        <span class="vp-mono">{{ "%.2f"|format(ai_score) }}%</span>
+                                    </div>
+                                    <div class="vp-bar vp-bar-danger"><span style="width: {{ ai_score }}%;"></span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="row g-3 h-100">
+                            <div class="col-sm-6">
+                                <div class="vp-panel vp-image-card h-100">
+                                    <div class="vp-image-card-head">
+                                        <span>Gambar Asli</span>
+                                        <span class="vp-tag">Input</span>
+                                    </div>
+                                    <img src="{{ url_for('static', filename='uploads/' + original_img) }}" class="vp-preview-img" alt="Gambar asli yang diunggah">
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="vp-panel vp-image-card h-100">
+                                    <div class="vp-image-card-head">
+                                        <span>Heatmap Grad-CAM</span>
+                                        <span class="vp-tag">Explainable AI</span>
+                                    </div>
+                                    <img src="{{ url_for('static', filename='uploads/' + gradcam_img) }}" class="vp-preview-img" alt="Visualisasi heatmap Grad-CAM">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="vp-panel vp-empty-state text-center mx-auto">
+                    <img class="vp-logo-full" src="{{ url_for('static', filename='images/logo-full.png') }}" alt="Logo VeriPixel">
+                    <h3 class="vp-h3 mt-3">Belum ada gambar yang dianalisis</h3>
+                    <p class="vp-muted mb-0">Unggah gambar pada bagian Deteksi untuk melihat label, persentase, dan heatmap Grad-CAM di area ini.</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- ============ HISTORY ============ -->
+        <section class="vp-section vp-section-alt" id="history">
+            <div class="container">
+                <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+                    <div class="vp-section-head">
+                        <p class="vp-kicker">Riwayat</p>
+                        <h2 class="vp-h2">History <span>deteksi</span></h2>
+                        <p class="vp-section-copy mb-0">
+                            Seluruh riwayat analisis tersimpan otomatis di database, lengkap dengan label,
+                            tingkat keyakinan, dan perbandingan visual Grad-CAM.
+                        </p>
+                    </div>
+                    {% if history %}
+                    <form action="{{ url_for('clear_history') }}" method="POST" onsubmit="return confirm('Hapus semua history deteksi?');">
+                        <button type="submit" class="btn vp-btn vp-btn-danger">Hapus Semua</button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                {% if history %}
+                <div class="row g-3">
+                    {% for item in history %}
+                    <div class="col-md-6">
+                        <article class="vp-panel vp-history-card">
+                            <div class="vp-history-thumb">
+                                <figure>
+                                    <img src="{{ url_for('static', filename='uploads/' + item['original_filename']) }}" alt="Gambar asli history {{ item['id'] }}">
+                                    <figcaption>Input</figcaption>
+                                </figure>
+                                <figure>
+                                    <img src="{{ url_for('static', filename='uploads/' + item['gradcam_filename']) }}" alt="Grad-CAM history {{ item['id'] }}">
+                                    <figcaption>Grad-CAM</figcaption>
+                                </figure>
+                            </div>
+                            <div class="vp-history-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="vp-pill {% if item['label'] == 'AI-Generated' %}vp-pill-danger{% endif %}">
+                                        {% if item['label'] == 'Real Image' %}Real{% else %}AI-Generated{% endif %}
+                                    </span>
+                                    <span class="vp-mono vp-history-id">#{{ item['id'] }}</span>
+                                </div>
+                                <p class="vp-history-score">{{ "%.2f"|format(item['confidence']) }}%</p>
+                                <p class="vp-history-meta mb-0">{{ item['created_at']|format_date_id }}</p>
+                                <p class="vp-history-meta vp-history-filename" title="{{ item['original_filename'] }}">{{ item['original_filename'] }}</p>
+                                <form action="{{ url_for('delete_history_item', detection_id=item['id']) }}" method="POST" onsubmit="return confirm('Hapus history ini?');">
+                                    <button type="submit" class="btn vp-btn vp-btn-danger w-100 mt-2">Hapus History</button>
+                                </form>
+                            </div>
+                        </article>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="vp-panel vp-empty-state text-center mx-auto">
+                    <img class="vp-logo-full" src="{{ url_for('static', filename='images/logo-full.png') }}" alt="Logo VeriPixel">
+                    <h3 class="vp-h3 mt-3">History masih kosong</h3>
+                    <p class="vp-muted mb-0">Setelah gambar dianalisis, hasilnya akan otomatis muncul di bagian ini.</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- ============ TENTANG ============ -->
+        <section class="vp-section vp-section-alt" id="tentang">
+            <div class="container">
+                <div class="vp-section-head mx-auto text-center">
+                    <p class="vp-kicker">Tentang</p>
+                    <h2 class="vp-h2">Tentang <span>VeriPixel</span></h2>
+                    <p class="vp-section-copy">
+                        VeriPixel adalah sistem berbasis web untuk membantu pemeriksaan awal keaslian sebuah
+                        gambar — apakah cenderung foto asli (real) atau hasil generatif AI — menggunakan model
+                        deep learning yang dilatih khusus untuk tugas ini, lengkap dengan visualisasi Grad-CAM
+                        sebagai penjelasan atas keputusan model.
+                    </p>
+                </div>
+
+                <!-- Tujuan & alur singkat -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="vp-panel vp-feature h-100">
+                            <span class="vp-feature-icon">01</span>
+                            <h3 class="vp-h4">Tujuan Sistem</h3>
+                            <p class="vp-muted mb-0">Memberi indikasi awal apakah sebuah gambar kemungkinan besar real atau AI-generated, sebagai alat bantu literasi digital dan verifikasi konten.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="vp-panel vp-feature h-100">
+                            <span class="vp-feature-icon">02</span>
+                            <h3 class="vp-h4">Explainable AI</h3>
+                            <p class="vp-muted mb-0">Setiap prediksi disertai heatmap Grad-CAM, sehingga keputusan model tidak menjadi kotak hitam — area yang memengaruhi hasil bisa ditelusuri.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="vp-panel vp-feature h-100">
+                            <span class="vp-feature-icon">03</span>
+                            <h3 class="vp-h4">Riwayat Tersimpan</h3>
+                            <p class="vp-muted mb-0">Seluruh hasil deteksi otomatis tercatat di database, memudahkan penelusuran dan evaluasi ulang di kemudian hari.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tentang model -->
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-7">
+                        <div class="vp-panel h-100 p-4">
+                            <p class="vp-kicker mb-1">Di balik layar</p>
+                            <h3 class="vp-h3 mb-3">Tentang Model</h3>
+                            <p class="vp-muted">
+                                Model klasifikasi dibangun di atas arsitektur <strong class="vp-text-strong">EfficientNet-B0</strong>
+                                dengan pendekatan transfer learning dari bobot ImageNet, lalu dilatih ulang (fine-tuned)
+                                untuk membedakan dua kelas: <em>Real Image</em> dan <em>AI-Generated</em>.
+                            </p>
+                            <p class="vp-muted">
+                                Untuk memperluas kemampuan generalisasi model terhadap berbagai jenis generator AI
+                                (bukan hanya satu jenis diffusion model), data latih digabung dari beberapa sumber
+                                publik dengan karakteristik konten yang berbeda-beda.
+                            </p>
+                            <p class="vp-muted mb-0">
+                                Interpretasi hasil dibantu dengan <strong class="vp-text-strong">Grad-CAM</strong>
+                                (Gradient-weighted Class Activation Mapping), yang mengambil gradien dari layer
+                                konvolusi terakhir untuk menyusun peta area gambar paling berpengaruh terhadap
+                                keputusan model.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5">
+                        <div class="vp-panel h-100 p-4">
+                            <p class="vp-kicker mb-3">Spesifikasi Model</p>
+                            <dl class="vp-spec-list mb-0">
+                                <div class="vp-spec-row">
+                                    <dt>Arsitektur</dt>
+                                    <dd class="vp-mono">EfficientNet-B0</dd>
+                                </div>
+                                <div class="vp-spec-row">
+                                    <dt>Metode</dt>
+                                    <dd class="vp-mono">Transfer Learning</dd>
+                                </div>
+                                <div class="vp-spec-row">
+                                    <dt>Ukuran Input</dt>
+                                    <dd class="vp-mono">224 × 224 × 3</dd>
+                                </div>
+                                <div class="vp-spec-row">
+                                    <dt>Kelas Output</dt>
+                                    <dd class="vp-mono">Real Image / AI-Generated</dd>
+                                </div>
+                                <div class="vp-spec-row">
+                                    <dt>Explainability</dt>
+                                    <dd class="vp-mono">Grad-CAM</dd>
+                                </div>
+                                <div class="vp-spec-row">
+                                    <dt>Dataset Latih</dt>
+                                    <dd class="vp-mono">CIFAKE + GenImage + AI vs Human</dd>
+                                </div>
+                                <div class="vp-spec-row">
+                                    <dt>Framework</dt>
+                                    <dd class="vp-mono">PyTorch</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teknologi -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
+                        <div class="vp-panel p-4">
+                            <p class="vp-kicker mb-3">Tumpukan Teknologi</p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="vp-chip">Flask</span>
+                                <span class="vp-chip">PyTorch</span>
+                                <span class="vp-chip">EfficientNet-B0</span>
+                                <span class="vp-chip">Grad-CAM</span>
+                                <span class="vp-chip">OpenCV</span>
+                                <span class="vp-chip">SQLite</span>
+                                <span class="vp-chip">Bootstrap 5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Disclaimer -->
+                <div class="vp-note">
+                    <strong class="vp-text-strong">Catatan penting:</strong>
+                    hasil deteksi VeriPixel merupakan prediksi statistik dari model machine learning, bukan
+                    bukti forensik yang bersifat definitif. Gunakan hasil ini sebagai indikasi awal, dan
+                    padukan dengan penilaian manual atau alat verifikasi lain untuk kasus yang membutuhkan
+                    kepastian tinggi.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="vp-footer">
+        <div class="container text-center">
+            <span class="vp-mono">VeriPixel</span> — Verify Every Pixel · Skripsi Deteksi Citra AI-Generated
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            var target = null;
+            {% if error %}
+            target = document.getElementById('deteksi');
+            {% elif label %}
+            target = document.getElementById('hasil');
+            {% endif %}
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    </script>
+</body>
+</html>

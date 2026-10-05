@@ -1,0 +1,2 @@
+File gambar hasil upload & Grad-CAM akan otomatis disimpan di folder ini saat
+aplikasi berjalan. Folder ini boleh dikosongkan / ditambahkan ke .gitignore.
